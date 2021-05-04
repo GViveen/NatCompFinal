@@ -6,6 +6,7 @@ Created on Mon May  3 09:08:40 2021
 """
 
 from collections import defaultdict, deque
+import random
 from tqdm import trange
 
 class Intersection:
@@ -108,3 +109,158 @@ class Simulation:
         for i in trange(0, self.nr_iters):
             self.iterate()
         print(self.score)
+        
+        
+class Grid:
+    alphabeth = 'abcdefghijklmnopqrstuvwxyz'
+    
+    class Intersection:
+        def __init__(self, id):
+            self.id = id
+            
+    class Street:
+        def __init__(self, start, end, length):
+            self.start = start
+            self.end = end
+            self.name = Grid.gen_street_name(start, end)
+            self.length = length
+            
+        def __repr__(self):
+            return f"{self.start} {self.end} {self.name} {self.length} \n"
+                
+    def __init__(self, width):
+        self.grid = list()
+        self.width = width
+        self.streets = dict()
+        count = 0
+        for r in range(width):
+            l = list()
+            for c in range(width):
+                l.append(Grid.Intersection(r*width+c))
+                count +=1
+            self.grid.append(l)
+        self.num_intersections = count
+            
+    def neighbors(self, row, col):
+        """Returns neighboring intersections of intersection at specified location
+
+        Args:
+            row (int): row
+            col (int): column
+
+        Returns:
+            4-tuple of Grid.Intersection: neighbors
+        """
+        width = self.width
+        r = row
+        c = col
+        top = self.grid[r-1][c] 
+        bottom = self.grid[(r+1)%width][c]
+        left = self.grid[r][c-1]
+        right = self.grid[r][(c+1)%width]
+        return (top,bottom,left,right)
+    
+    def gen_street_name(start, end) -> str:
+        """Generates a street name based on the intersection on the start and end of the street
+
+        Args:
+            start (int): ID of intersection at start of street
+            end (int): ID of intersection at the end of the street
+
+        Returns:
+            str: Street name
+        """
+        start = [int(char) for char in str(start)]
+        end = [int(char) for char in str(end)]
+        string = ""
+        for i in start:
+            string += f"{Grid.alphabeth[i]}"
+        string += "-"
+        for j in end:
+            string += f"{Grid.alphabeth[j]}"
+        return string
+            
+    def gen_grid_description(self) -> str:
+        """Returns description of the grid in hashcode input format
+
+        Returns:
+            str: description of grid
+        """
+        width = self.width
+        data = ''
+        for r in range(width):
+            row = self.grid[r]
+            for c in range(len(row)): # for each intersection
+                intersection = self.grid[r][c] # get the intersection
+                # get the connected intersections in all 4 directions
+                streets = self.neighbors(r, c)
+                for s in streets:
+                    street = Grid.Street(intersection.id, s.id, 40)
+                    self.streets[street.name] = street
+                    data+= repr(street)
+                    
+        return data
+    
+    def gen_grid_cars(self, amount, operations) -> str:
+        """ Returns generated cars in hashcode input format
+        
+        Args:
+            amount (int): Number of cars to generate
+            operations (int): Number of operations a car is given
+            
+        Returns:
+            str: Description of cars and their routes
+        """
+        width = self.width
+        data = ''
+        for c in range(amount):
+            data += f"{operations} "
+            row = random.randint(0, width-1)
+            col = random.randint(0, width-1) 
+            current = self.grid[row][col]
+            prev = None
+            for i in range(operations):
+                neighbours = list(self.neighbors(current.id // width, current.id%width))
+                if prev != None:
+                    neighbours.remove(prev)
+                rand_next = neighbours[random.randint(0, len(neighbours)-1)]
+                street_name = Grid.gen_street_name(current.id, rand_next.id)
+                if street_name in self.streets:    
+                    data += street_name + ' '
+                    prev = current
+                    current = rand_next
+                else:
+                    raise("Invalid street name")
+                
+            data += '\n'
+        return data
+                
+                
+    
+    def gen_hashcode_string(self, duration, num_cars, hops, bonus_points = 1000, save = False, name='') -> str:
+        """Generates hashcode data string
+
+        Args:
+            duration (int): duration of the simulation.
+            num_cars (int): number of cars.
+            hops (int): number of hops.
+            bonus_points (int, optional): Bonus points we get when car finishes within duration.
+            save (bool, optional): Whether to save the file to de ./data folder. Defaults to False.
+            name (str, optional): Name of the file when saved. Defaults to ''.
+
+        Returns:
+            str: Data in string format
+        """
+        data = ""
+        data += self.gen_grid_description()
+        data += self.gen_grid_cars(num_cars, hops)
+        
+        # prepend info
+        data = f"{duration} {self.num_intersections} {len(self.streets)} {num_cars} {bonus_points} \n" + data
+
+        if save and name:
+            file = open(f'./data/{name}', "w+")
+            file.write(data)
+            file.close()
+        
+        return data
