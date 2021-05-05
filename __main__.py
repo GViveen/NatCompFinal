@@ -1,9 +1,8 @@
 from os import name
-import classes
-import utils
+from simulation_classes import Grid
 
 def main():
-    g = classes.Grid(32)
+    g = Grid(32)
     g.gen_hashcode_string(
         duration=700,
         num_cars=100,

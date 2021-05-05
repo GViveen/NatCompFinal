@@ -6,13 +6,16 @@ Created on Sat May  1 08:10:36 2021
 """
 
 from collections import defaultdict
-from classes import Simulation
+from simulation_classes import Simulation
+from evo_classes import Population
 
 def parse_input(filename):
     # Create dict to hold streets
     street_dict = defaultdict(tuple)
     # Create list to hold all paths
     paths = []
+    # Create dict to hold all intersections for crossover purposes
+    intersection_dict = defaultdict(list)
     
     # Read in file
     with open(filename, 'r') as f:
@@ -31,12 +34,16 @@ def parse_input(filename):
     for line in content[1:1+S]:
         # Parse line elements
         l = line.split()
+        fr = int(l[0])
         to = int(l[1])
         name = l[2]
         length = int(l[3])
         
         # Store information in dicts
         street_dict[name] = (to, length)
+        if not(fr in intersection_dict[to]):
+            intersection_dict[to].append(fr)
+            intersection_dict[fr].append(to)            
         
     # Parse path info
     for line in content[1+S:]:
@@ -44,10 +51,16 @@ def parse_input(filename):
         l = line.split()
         paths.append(l[1:])
     
-    return street_dict, paths, D, F
+    return street_dict, paths, D, F, intersection_dict
 
 def create_default_sim_from_file(filename):
-    S, P, D, F = parse_input(filename)
+    S, P, D, F, I = parse_input(filename)
     sim = Simulation(S, P, F, D)
     
-    return sim
+    return sim, I
+
+def create_population_from_file(filename):
+    sim, inter_dict = create_default_sim_from_file(filename)
+    pop = Population(sim, inter_dict)
+    
+    return pop

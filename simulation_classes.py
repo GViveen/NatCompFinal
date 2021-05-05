@@ -33,6 +33,12 @@ class Intersection:
         
     def sched_to_cycle(self):
         return deque(self.schedule.items())
+    
+    def reset(self):
+        self.counter = 0
+        self.cycle = self.sched_to_cycle()
+        for street in self.queues:
+            self.queues[street] = deque([])
 
         
 class Car:
@@ -53,7 +59,9 @@ class Simulation:
         self.cars = defaultdict(Car)
         self.score = 0
         self.score_per_car = score_per_car
+        self.current_iter = 0
         self.nr_iters = nr_iters
+        self.original_paths = paths
         
         for k, v in self.streets.items():
             self.intersections[v[0]].add_incoming(k)
@@ -61,6 +69,7 @@ class Simulation:
         for i, path in enumerate(paths):
             car = Car(path)
             self.cars[i] = car
+            self.get_in_queue(i)
     
     def iterate_intersection(self, int_id):
         # Check if light changes
@@ -70,7 +79,7 @@ class Simulation:
         
         # Let through any waiting car
         if len(self.intersections[int_id].queues[self.intersections[int_id].cycle[0][0]]) > 0:
-            self.pass_green(self.cars[self.intersections[int_id].queues[self.intersections[int_id].cycle[0][0]][0]])
+            self.pass_green(self.intersections[int_id].queues[self.intersections[int_id].cycle[0][0]][0])
             self.intersections[int_id].queues[self.intersections[int_id].cycle[0][0]].popleft()
         
         # Increment counter
@@ -97,6 +106,7 @@ class Simulation:
         else:
             # If car has reached its last street, treat as finished and update score. Then remove car from simulation.
             self.score += self.score_per_car
+            self.score += self.nr_iters - self.current_iter
             self.cars.pop(car_id)
             
     def iterate(self):
@@ -104,15 +114,31 @@ class Simulation:
             self.iterate_intersection(int_id)
         for car_id in self.cars.keys():
             self.iterate_car(car_id)
+        self.current_iter += 1
             
-    def full_run(self):
-        for i in trange(0, self.nr_iters):
-            self.iterate()
-        print(self.score)
+    def full_run(self, verbose=False):
+        if verbose == True:
+            for i in trange(0, self.nr_iters):
+                self.iterate()
+        else: 
+            for i in range(0, self.nr_iters):
+                self.iterate()
+        return self.score
         
+    def reset(self):
+        for intersection in self.intersections.values():
+            intersection.reset()
+            
+        for i, path in enumerate(self.original_paths):
+            car = Car(path)
+            self.cars[i] = car
+            self.get_in_queue(i)
+        
+        self.score = 0
+        self.current_iter = 0
         
 class Grid:
-    alphabeth = 'abcdefghijklmnopqrstuvwxyz'
+    alphabet = 'abcdefghijklmnopqrstuvwxyz'
     
     class Intersection:
         def __init__(self, id):
@@ -174,10 +200,10 @@ class Grid:
         end = [int(char) for char in str(end)]
         string = ""
         for i in start:
-            string += f"{Grid.alphabeth[i]}"
+            string += f"{Grid.alphabet[i]}"
         string += "-"
         for j in end:
-            string += f"{Grid.alphabeth[j]}"
+            string += f"{Grid.alphabet[j]}"
         return string
             
     def gen_grid_description(self) -> str:
