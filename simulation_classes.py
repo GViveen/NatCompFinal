@@ -12,6 +12,11 @@ from tqdm import trange
 class Intersection:
     
     def __init__(self):
+        """
+        Class to hold information about a single intersection.
+        Stores incoming streets and the cars waiting for a green on those streets
+        Also contains the schedule for the intersection and its current state within a cycle
+        """
         # Initialize schedule as dict with street names as keys and ints as values
         self.schedule = defaultdict(int)
         # Initialize queues as dict of queues with street names as keys
@@ -20,21 +25,26 @@ class Intersection:
         self.counter = 0 
         
     def add_incoming(self, street_name, sched_time=1):
+        # Add an incoming street to the intersection
         self.schedule[street_name] = sched_time
         self.cycle = self.sched_to_cycle()
         self.queues[street_name] = deque()
         
     def set_schedule(self, street_name, sched_time):
+        # Change the timing for a certain street
         self.schedule[street_name] = sched_time
         self.cycle = self.sched_to_cycle()
         
     def add_to_queue(self, street_name, car):
+        # Add a car into the queue from a certain street
         self.queues[street_name].append(car)
         
     def sched_to_cycle(self):
+        # Reset cycle to match most recent schedule
         return deque(self.schedule.items())
     
     def reset(self):
+        # Reset entire intersection, clearing all queues and setting counter to 0
         self.counter = 0
         self.cycle = self.sched_to_cycle()
         for street in self.queues:
@@ -44,6 +54,16 @@ class Intersection:
 class Car:
     
     def __init__(self, path):
+        """
+        Class to hold important information on a single vehicle.
+        Stores the distance to the next intersection, as well as the route.
+
+        Parameters
+        ----------
+        path : list
+            path contains an *ordered* list of street 
+            identifiers which the car wants to visit.
+        """
         self.path = deque(path)
         
         self.current_street = self.path[0]
@@ -54,6 +74,28 @@ class Car:
 class Simulation:
     
     def __init__(self, streets, paths, score_per_car, nr_iters):
+        """
+        Class used to efficiently run simulations.
+        Stores a list of Car and Intersection objects, as well as a dict
+        of streets, their identifiers and the intersections at which they end.
+        
+        Also stores simulation parameters: number of iterations in a full run,
+        scores gained per car.
+
+        Parameters
+        ----------
+        streets : dict
+            dictionary of streets using their identifiers as keys and a tuple
+            containing the intersection identifier where they end, and their length.
+        paths : list
+            list of lists, containing all the paths all the cars should take.
+        score_per_car : int
+            integer setting the score gained per car that completes its route.
+        nr_iters : int
+            integer setting the number of iterations for a single simulation.
+
+        """
+        # Set parameters and store those necessary for resetting.
         self.streets = streets
         self.intersections = defaultdict(Intersection)
         self.cars = defaultdict(Car)
@@ -63,12 +105,15 @@ class Simulation:
         self.nr_iters = nr_iters
         self.original_paths = paths
         
+        # Build dict of Intersection objects using street dict
         for k, v in self.streets.items():
             self.intersections[v[0]].add_incoming(k)
         
+        # Build dict of Car objects using paths
         for i, path in enumerate(paths):
             car = Car(path)
             self.cars[i] = car
+            # Cars start waiting at the end of their first street, so queue them up.
             self.get_in_queue(i)
     
     def iterate_intersection(self, int_id):
@@ -86,12 +131,15 @@ class Simulation:
         self.intersections[int_id].counter += 1
         
     def iterate_car(self, car_id):
+        # If a car still needs to travel before hitting a light, do so.
         if self.cars[car_id].distance_to_next > 0:
             self.cars[car_id].distance_to_next -= 1
+            # If a car reaches distance 0, it has to queue up for the light.
             if self.cars[car_id].distance_to_next == 0:
                 self.get_in_queue(car_id)
                 
     def get_in_queue(self, car_id):
+        # Put a Car in the correct queue of the correct Intersection
         street_name = self.cars[car_id].current_street
         int_id = self.streets[street_name][0]
         self.intersections[int_id].add_to_queue(street_name, car_id)
@@ -110,6 +158,8 @@ class Simulation:
             self.cars.pop(car_id)
             
     def iterate(self):
+        # Call the iterate function for the intersections first, to let through any cars that are queued
+        # Afterwards, iterate all cars that are not still in queue. Then increment current iteration counter.
         for int_id in self.intersections.keys():
             self.iterate_intersection(int_id)
         for car_id in self.cars.keys():
@@ -117,6 +167,7 @@ class Simulation:
         self.current_iter += 1
             
     def full_run(self, verbose=False):
+        # Do a full run of the simulation.
         if verbose == True:
             for i in trange(0, self.nr_iters):
                 self.iterate()
@@ -126,6 +177,7 @@ class Simulation:
         return self.score
         
     def reset(self):
+        # Reset the simulation to its initial state.
         for intersection in self.intersections.values():
             intersection.reset()
             
