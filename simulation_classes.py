@@ -7,6 +7,8 @@ Created on Mon May  3 09:08:40 2021
 
 from collections import defaultdict, deque
 import random
+
+import numpy as np
 from tqdm import trange
 
 class Intersection:
@@ -195,6 +197,7 @@ class Grid:
     class Intersection:
         def __init__(self, id):
             self.id = id
+            self.in_streets = list()
             
     class Street:
         def __init__(self, start, end, length):
@@ -206,19 +209,33 @@ class Grid:
         def __repr__(self):
             return f"{self.start} {self.end} {self.name} {self.length} \n"
                 
-    def __init__(self, width):
+    def __init__(self, width, simple_scenario):
         self.grid = list()
         self.width = width
         self.streets = dict()
-        count = 0
-        for r in range(width):
-            l = list()
-            for c in range(width):
-                l.append(Grid.Intersection(r*width+c))
-                count +=1
-            self.grid.append(l)
-        self.num_intersections = count
-            
+
+        self.simple_sceneario = simple_scenario
+        if simple_scenario:
+            count = 0
+            for r in range(width):
+                l = list()
+                for c in range(width):
+                    l.append(Grid.Intersection(r*width+c))
+                    count +=1
+                self.grid.append(l)
+            self.num_intersections = count
+
+        else:
+            #consider width the number of intersections
+            self.num_intersections = width
+
+    def random_neighbors(self, id, min_neighbors, max_neighbors):
+        n_neighbors = random.randrange(min_neighbors, max_neighbors)
+        intersections = np.arange(start=0, stop=self.num_intersections, step=1)
+        intersections = np.delete(intersections, id)
+        neighbors_choice = np.random.choice(intersections, n_neighbors, replace=False)
+        return neighbors_choice
+
     def neighbors(self, row, col):
         """Returns neighboring intersections of intersection at specified location
 
@@ -257,8 +274,43 @@ class Grid:
         for j in end:
             string += f"{Grid.alphabet[j]}"
         return string
-            
-    def gen_grid_description(self) -> str:
+
+    def check_streets_inverse_direction(self, street):
+        for s in self.streets.keys():
+            s_name = s.split('-')
+            s_name = s_name[1]+'-'+s_name[0]
+            if s_name == street.name:
+                street_inverse = self.streets[s]
+                return street_inverse.length
+        else: return 0
+
+    def gen_grid_description_complex(self, min_neighbors, max_neighbors) -> str:
+        """Returns description of the grid in hashcode input format
+
+        Returns:
+            str: description of grid
+        """
+
+        data = ''
+        for id in range(self.num_intersections):
+            intersection = Grid.Intersection(id)
+            self.grid.append(intersection)
+            neighbors = self.random_neighbors(id, min_neighbors, max_neighbors)
+            for neighbor in neighbors:
+                length = random.randrange(10, 40)
+                street = Grid.Street(neighbor, intersection.id, length)
+                len_inverse_street = self.check_streets_inverse_direction(street)
+
+                if len_inverse_street > 0:
+                    street.length = len_inverse_street
+
+                intersection.in_streets.append(street)
+                self.streets[street.name] = street
+                data += repr(street)
+
+        return data
+
+    def gen_grid_description_simple(self) -> str:
         """Returns description of the grid in hashcode input format
 
         Returns:
@@ -278,7 +330,32 @@ class Grid:
                     data+= repr(street)
                     
         return data
-    
+
+    def gen_grid_cars_complex(self, amount, operations) -> str:
+        """ Returns generated cars in hashcode input format
+
+        Args:
+            amount (int): Number of cars to generate
+            operations (int): Number of operations a car is given
+
+        Returns:
+            str: Description of cars and their routes
+        """
+        data = ''
+        streets_names = list(self.streets.keys())
+        for c in range(amount):
+            data += f"{operations} "
+            start_point = streets_names[random.randrange(0, len(streets_names))]
+            data += start_point + ' '
+            for i in range(operations):
+                next_intersection_id = self.streets[start_point].end
+                intersection = self.grid[next_intersection_id]
+                streets = intersection.in_streets
+                next_point = streets[random.randrange(0, len(streets))].name
+                data += next_point + ' '
+            data +='\n'
+        return data
+
     def gen_grid_cars(self, amount, operations) -> str:
         """ Returns generated cars in hashcode input format
         
@@ -315,7 +392,7 @@ class Grid:
                 
                 
     
-    def gen_hashcode_string(self, duration, num_cars, hops, bonus_points = 1000, save = False, name='') -> str:
+    def gen_hashcode_string(self, duration, num_cars, hops, bonus_points = 1000, save = False, name='', min_neighbors=4, max_neighbors=4) -> str:
         """Generates hashcode data string
 
         Args:
@@ -325,13 +402,19 @@ class Grid:
             bonus_points (int, optional): Bonus points we get when car finishes within duration.
             save (bool, optional): Whether to save the file to de ./data folder. Defaults to False.
             name (str, optional): Name of the file when saved. Defaults to ''.
+            min_neighbors (int, optional): Minimum number of incoming streets in an intersection. Defaults to 4.
+            max_neighbors (int, optional): Maximum number of incoming streets in an intersection. Defaults to 4.
 
         Returns:
             str: Data in string format
         """
         data = ""
-        data += self.gen_grid_description()
-        data += self.gen_grid_cars(num_cars, hops)
+        if self.simple_sceneario:
+            data += self.gen_grid_description_simple()
+            data += self.gen_grid_cars(num_cars, hops)
+        else:
+            data += self.gen_grid_description_complex(min_neighbors, max_neighbors)
+            data += self.gen_grid_cars_complex(num_cars, hops)
         
         # prepend info
         data = f"{duration} {self.num_intersections} {len(self.streets)} {num_cars} {bonus_points} \n" + data
