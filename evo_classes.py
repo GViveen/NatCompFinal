@@ -206,15 +206,21 @@ class Population:
         best_run = []
         worst_run = []
         mean_run = []
+        
+        actual_changes = 0
+        
         if verbose:
             for i in trange(nr_gens):
                 best, worst, mean = self.next_generation()
                 best_run.append(best)
                 worst_run.append(worst)
                 mean_run.append(mean)
-            
-            return best_run, worst_run, mean_run
-        
+
+                if len(best_run) > 3:
+                    if not np.equal(best_run[-2], best):
+                        actual_changes+=1
+                        success_rate = actual_changes / i
+                        print(f"Generation {i} - best: {best}, worst: {worst}, mean: {mean}, success rate: {success_rate:.2f}")
         else:
             for i in range(nr_gens):
                 best, worst, mean = self.next_generation()
@@ -222,6 +228,6 @@ class Population:
                 worst_run.append(worst)
                 mean_run.append(mean)
             
-            return best_run, worst_run, mean_run
+        return best_run, worst_run, mean_run
         
         
