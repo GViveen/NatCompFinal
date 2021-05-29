@@ -59,8 +59,8 @@ def create_default_sim_from_file(filename):
     
     return sim, I
 
-def create_population_from_file(filename, mutation_rate=0.001):
+def create_population_from_file(filename, mutation_rate=0.001, gen_size=2):
     sim, inter_dict = create_default_sim_from_file(filename)
-    pop = Population(sim, inter_dict, mutation_rate=mutation_rate)
+    pop = Population(sim, inter_dict, gen_size=gen_size, mutation_rate=mutation_rate)
     
     return pop

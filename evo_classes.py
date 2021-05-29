@@ -168,8 +168,7 @@ class Population:
         # Generate additional candidates through reproduction
         for i in range(nr_of_reproductions):
             # self.select_parents TODO
-            parent_1 = self.individuals[0]
-            parent_2 = self.individuals[1]
+            parent_1, parent_2 = np.random.choice(self.individuals, 2, False)
             candidates = candidates + self.reproduce(parent_1, parent_2)
         
         # Pick gen_size best performing candidates as next generation
