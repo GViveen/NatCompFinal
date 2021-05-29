@@ -8,8 +8,8 @@ def main(use_simulated_data=False, create_new_file=False, num_generations=1000):
     if use_simulated_data:
         data_file = "./data/complex_test.in"
         if create_new_file:
-            g = Grid(800, simple_scenario=False)
-            hashcode_string = g.gen_hashcode_string(
+            g = Grid(100, simple_scenario=False)
+            g.gen_hashcode_string(
                 duration=700,
                 num_cars=100,
                 hops=12,
