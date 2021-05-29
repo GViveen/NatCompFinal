@@ -200,6 +200,25 @@ class Population:
         
         return visited
     
+    def torunament_select(self, tournament_size=2):
+        rng = default_rng()
+        tournaments = [np.array(self.individuals)[rng.choice(len(self.individuals), size=2*tournament_size, replace=False)] for i in range(int(len(self.individuals)/2))]
+        
+        # Find best in first binary tourney
+        if tournaments[0].fitness() < tournaments[1].fitness():
+            candidate_1 = tournaments[0]
+        else:
+            candidate_1 = tournaments[1]
+        # Find best in second binary tourney
+        if tournaments[2].fitness() < tournaments[3].fitness():
+            candidate_2 = tournaments[2]
+        else:
+            candidate_2 = tournaments[3]
+            
+        return candidate_1, candidate_2
+        
+        
+    
     def run(self, nr_gens, verbose = True):
         # Perform a run of nr_gens subsequent generations, storing the intermediate
         # metrics.

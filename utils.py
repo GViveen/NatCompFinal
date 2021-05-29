@@ -8,6 +8,7 @@ Created on Sat May  1 08:10:36 2021
 from collections import defaultdict
 from simulation_classes import Simulation
 from evo_classes import Population
+import matplotlib.pyplot as plt
 
 def parse_input(filename):
     # Create dict to hold streets
@@ -64,3 +65,13 @@ def create_population_from_file(filename):
     pop = Population(sim, inter_dict)
     
     return pop
+
+def plot_evolutionary_run(best, worst, mean, fig_no=1):
+    plt.figure(fig_no)
+    plt.plot(best, 'r-', label="Best")
+    plt.plot(worst, 'b-', label="Worst")
+    plt.plot(mean, 'g-', label="Mean")
+    plt.xlabel("Generation number")
+    plt.ylabel("Score")
+    plt.title("Performance of individuals across all generations.")
+    plt.legend()
