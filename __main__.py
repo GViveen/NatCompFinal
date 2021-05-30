@@ -21,7 +21,7 @@ def main(use_simulated_data=False, create_new_file=False, num_generations=1000):
             )
     else:
         data_file = "./data/hashcode.in"
-    pop = utils.create_population_from_file(data_file, 0.1, gen_size=2)
+    pop = utils.create_population_from_file(data_file, 0.001, gen_size=100, candidate_size=10)
     b, w, m = pop.run(num_generations)
     print(f"Generation {num_generations} - best: {b}, worst: {w}, mean: {m}")
     
