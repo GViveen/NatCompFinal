@@ -153,40 +153,62 @@ class Population:
         
         # Find connected nodes to form a set for crossover
         cross_set = self.find_connected_set(cross_seed, int(cross_ratio*len(self.sim.intersections)))
-        
+                
         # Initialize children by copying parents.
         child_1 = ind_1.copy()
         child_2 = ind_2.copy()
         
         # Perform crossover
-        for int_id in cross_set:
+        for int_id in cross_set: # <- this takes a lot of time 
             child_1.schedules[int_id] = ind_2.schedules[int_id]
             child_2.schedules[int_id] = ind_1.schedules[int_id]
             
         # Check for mutation
-        child_1.mutate()
+        child_1.mutate() # <- Also takes a lot of time
         child_2.mutate()
         
         # Evaluate children
-        self.evaluate_ind(child_1)
+        self.evaluate_ind(child_1) # <- Also significantly decreases speed
         self.evaluate_ind(child_2)
         
         return [child_1, child_2]
+
     
-    def next_generation(self):
+    def next_generation_default(self):
         nr_of_reproductions = int(self.candidate_size/2)
         
         # Initialize candidates for next generation by copying current generation.
-        candidates = self.tournament_select()
+        
         candidates = [] + self.individuals
         
         # Generate additional candidates through reproduction
         for i in range(nr_of_reproductions):
-            # self.select_parents TODO
-            # parent_1 = self.individuals[0]
-            # parent_2 = self.individuals[1]
-            parent_1, parent_2 = self.tournament_select()
+            parent_1 = self.individuals[0]
+            parent_2 = self.individuals[1]
             candidates = candidates + self.reproduce(parent_1, parent_2)
+        
+        # Pick gen_size best performing candidates as next generation
+        candidates = np.array(candidates)
+        fitness_per_candidate = np.array([c.fitness for c in candidates])
+        indices = (-fitness_per_candidate).argsort()[:self.gen_size]
+        self.individuals = list(candidates[indices])
+        
+        # Return fitness metrics of current generation
+        fitness_per_ind = np.array([i.fitness for i in self.individuals])
+        return fitness_per_ind.max(), fitness_per_ind.min(), fitness_per_ind.mean()
+    
+    def next_generation_tournament(self):
+        nr_of_reproductions = int(self.candidate_size/2)
+        
+        # Initialize candidates for next generation by copying current generation.
+        
+        candidates = [] + self.individuals
+        
+        # Generate additional candidates through reproduction
+        for i in range(nr_of_reproductions):
+            parent_1, parent_2 = self.tournament_select()
+            # TODO make this method more efficient, this one slows down the algorithm most of all.
+            candidates = candidates + self.reproduce(parent_1, parent_2) 
         
         # Pick gen_size best performing candidates as next generation
         candidates = np.array(candidates)
@@ -220,10 +242,8 @@ class Population:
         tournament_size = self.tournament_size
         tournament = np.random.choice(self.individuals, size=tournament_size, replace=False)
         # TODO optimize such that max tournament_size checks are done in the sorting algorithm
-        candidates = sorted(tournament, key=lambda c: c.fitness)[:self.candidate_size] 
+        candidates = sorted(tournament, key=lambda c: c.fitness)[:2] 
         return candidates
-        
-        
         
     
     def run(self, nr_gens, verbose = True):
@@ -234,11 +254,11 @@ class Population:
         mean_run = []
         if verbose:
             for i in trange(nr_gens):
-                best, worst, mean = self.next_generation()
+                best, worst, mean = self.next_generation_tournament() if self.tournament_size else self.next_generation_default()
                 
                 if len(best_run) > 0:
                     if best != max(best_run):
-                        print(f"Gen-{i}: best = {best}")
+                        print(f"Gen{i}: best = {best}")
                 
                 best_run.append(best)
                 worst_run.append(worst)

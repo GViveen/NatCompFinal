@@ -24,8 +24,8 @@ def main(use_simulated_data=False, create_new_file=False, num_generations=1000):
         data_file = "./data/hashcode.in"
     sim, intersection_dict = utils.create_default_sim_from_file(data_file)
     pop = Population(sim, intersection_dict, \
-        gen_size=100, candidate_size=2, timing_cap=10, \
-        mutation_rate=0.001, tournament_size=10)
+        gen_size=100, candidate_size=4, timing_cap=10, \
+        mutation_rate=0.001, tournament_size=20)
     b, w, m = pop.run(num_generations)
     print(f"Generation {num_generations} - best: {b}, worst: {w}, mean: {m}")
     
