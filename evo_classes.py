@@ -5,6 +5,7 @@ Created on Wed May  5 12:52:40 2021
 @author: Glenn
 """
 
+from os import replace
 from numpy.random import default_rng
 import numpy as np
 from collections import defaultdict, deque
@@ -59,7 +60,7 @@ class Individual:
                 
 class Population:
     
-    def __init__(self, sim, intersection_dict, gen_size=2, candidate_size=2, timing_cap = 10, mutation_rate = 0.001):
+    def __init__(self, sim, intersection_dict, gen_size=2, candidate_size=2, timing_cap = 10, mutation_rate = 0.001, tournament_size = None):
         """
         Class containing a Simulation object and a set of Individual objects
         needed to run an EA to optimize.
@@ -82,7 +83,9 @@ class Population:
             to stay green before cycling. The default is 10.
         mutation_rate : float, optional
             Chance for the schedule of every intersection to mutate. The default is 0.001.
-
+        Tournament_size : int, optional
+            Defines the size of the tournament used in tournament select. Default value is None.
+            Must be set to a value to make it useable.
 
         """
         
@@ -93,6 +96,17 @@ class Population:
         self.mutation_rate = mutation_rate
         self.gen_size = gen_size
         self.candidate_size = candidate_size
+        self.tournament_size = tournament_size
+        
+        if tournament_size:
+            if tournament_size < 2:
+                raise ValueError("Tournament_size must be 2 or higher.")
+            
+            if tournament_size > gen_size:
+                raise ValueError("Tournnament_size cannot be larger than gen_size.")
+            
+            if candidate_size > tournament_size:
+                raise ValueError("candidate size cannot be larger than tournament size.")
         
         # Initialize list to hold Individual objects
         self.individuals = []
@@ -163,13 +177,15 @@ class Population:
         nr_of_reproductions = int(self.candidate_size/2)
         
         # Initialize candidates for next generation by copying current generation.
+        candidates = self.tournament_select()
         candidates = [] + self.individuals
         
         # Generate additional candidates through reproduction
         for i in range(nr_of_reproductions):
             # self.select_parents TODO
-            parent_1 = self.individuals[0]
-            parent_2 = self.individuals[1]
+            # parent_1 = self.individuals[0]
+            # parent_2 = self.individuals[1]
+            parent_1, parent_2 = self.tournament_select()
             candidates = candidates + self.reproduce(parent_1, parent_2)
         
         # Pick gen_size best performing candidates as next generation
@@ -200,22 +216,13 @@ class Population:
         
         return visited
     
-    def torunament_select(self, tournament_size=2):
-        rng = default_rng()
-        tournaments = [np.array(self.individuals)[rng.choice(len(self.individuals), size=2*tournament_size, replace=False)] for i in range(int(len(self.individuals)/2))]
+    def tournament_select(self):
+        tournament_size = self.tournament_size
+        tournament = np.random.choice(self.individuals, size=tournament_size, replace=False)
+        # TODO optimize such that max tournament_size checks are done in the sorting algorithm
+        candidates = sorted(tournament, key=lambda c: c.fitness)[:self.candidate_size] 
+        return candidates
         
-        # Find best in first binary tourney
-        if tournaments[0].fitness() < tournaments[1].fitness():
-            candidate_1 = tournaments[0]
-        else:
-            candidate_1 = tournaments[1]
-        # Find best in second binary tourney
-        if tournaments[2].fitness() < tournaments[3].fitness():
-            candidate_2 = tournaments[2]
-        else:
-            candidate_2 = tournaments[3]
-            
-        return candidate_1, candidate_2
         
         
     
@@ -228,6 +235,11 @@ class Population:
         if verbose:
             for i in trange(nr_gens):
                 best, worst, mean = self.next_generation()
+                
+                if len(best_run) > 0:
+                    if best != max(best_run):
+                        print(f"Gen-{i}: best = {best}")
+                
                 best_run.append(best)
                 worst_run.append(worst)
                 mean_run.append(mean)
