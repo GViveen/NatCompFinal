@@ -102,11 +102,8 @@ class Population:
             if tournament_size < 2:
                 raise ValueError("Tournament_size must be 2 or higher.")
             
-            if tournament_size > gen_size:
-                raise ValueError("Tournnament_size cannot be larger than gen_size.")
-            
-            if candidate_size > tournament_size:
-                raise ValueError("candidate size cannot be larger than tournament size.")
+            if tournament_size > gen_size//2:
+                raise ValueError("Tournnament_size cannot be larger than half of gen_size.")
         
         # Initialize list to hold Individual objects
         self.individuals = []
@@ -147,7 +144,7 @@ class Population:
         
         rng = default_rng()
         # Randomly determine crossover ratio
-        cross_ratio = rng.random()
+        cross_ratio = rng.random()*0.5
         # Randomly determine seed point for spatial crossover set
         cross_seed = rng.integers(0, len(self.sim.intersections))
         
@@ -240,9 +237,11 @@ class Population:
     
     def tournament_select(self):
         tournament_size = self.tournament_size
-        tournament = np.random.choice(self.individuals, size=tournament_size, replace=False)
+        tournaments = np.random.choice(self.individuals, size=2*tournament_size, replace=False)
+        tournament_1 = tournaments[:tournament_size]
+        tournament_2 = tournaments[tournament_size:]
         # TODO optimize such that max tournament_size checks are done in the sorting algorithm
-        candidates = sorted(tournament, key=lambda c: c.fitness)[:2] 
+        candidates = [sorted(tournament_1, key=lambda c: c.fitness)[0], sorted(tournament_2, key=lambda c: c.fitness)[0]]
         return candidates
         
     
