@@ -76,6 +76,7 @@ if __name__ == "__main__":
         action="store_true",
         help="If True, replace all parents every generation. If False, choose top n from among children + parents",
     )
+    parser.set_defaults(replace=False)
     parser.add_argument(
         "--num_gens",
         dest="num_gens",
