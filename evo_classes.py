@@ -5,6 +5,7 @@ Created on Wed May  5 12:52:40 2021
 @author: Glenn
 """
 
+from os import replace
 from numpy.random import default_rng
 import numpy as np
 from collections import defaultdict, deque
@@ -59,7 +60,7 @@ class Individual:
                 
 class Population:
     
-    def __init__(self, sim, intersection_dict, gen_size=2, candidate_size=2, timing_cap = 10, mutation_rate = 0.001):
+    def __init__(self, sim, intersection_dict, gen_size=2, candidate_size=2, timing_cap = 10, mutation_rate = 0.001, tournament_size = None):
         """
         Class containing a Simulation object and a set of Individual objects
         needed to run an EA to optimize.
@@ -82,7 +83,9 @@ class Population:
             to stay green before cycling. The default is 10.
         mutation_rate : float, optional
             Chance for the schedule of every intersection to mutate. The default is 0.001.
-
+        Tournament_size : int, optional
+            Defines the size of the tournament used in tournament select. Default value is None.
+            Must be set to a value to make it useable.
 
         """
         
@@ -93,6 +96,14 @@ class Population:
         self.mutation_rate = mutation_rate
         self.gen_size = gen_size
         self.candidate_size = candidate_size
+        self.tournament_size = tournament_size
+        
+        if tournament_size:
+            if tournament_size < 2:
+                raise ValueError("Tournament_size must be 2 or higher.")
+            
+            if tournament_size > gen_size//2:
+                raise ValueError("Tournnament_size cannot be larger than half of gen_size.")
         
         # Initialize list to hold Individual objects
         self.individuals = []
@@ -133,44 +144,68 @@ class Population:
         
         rng = default_rng()
         # Randomly determine crossover ratio
-        cross_ratio = rng.random()
+        cross_ratio = rng.random()*0.5
         # Randomly determine seed point for spatial crossover set
         cross_seed = rng.integers(0, len(self.sim.intersections))
         
         # Find connected nodes to form a set for crossover
         cross_set = self.find_connected_set(cross_seed, int(cross_ratio*len(self.sim.intersections)))
-        
+                
         # Initialize children by copying parents.
         child_1 = ind_1.copy()
         child_2 = ind_2.copy()
         
         # Perform crossover
-        for int_id in cross_set:
+        for int_id in cross_set: # <- this takes a lot of time 
             child_1.schedules[int_id] = ind_2.schedules[int_id]
             child_2.schedules[int_id] = ind_1.schedules[int_id]
             
         # Check for mutation
-        child_1.mutate()
+        child_1.mutate() # <- Also takes a lot of time
         child_2.mutate()
         
         # Evaluate children
-        self.evaluate_ind(child_1)
+        self.evaluate_ind(child_1) # <- Also significantly decreases speed
         self.evaluate_ind(child_2)
         
         return [child_1, child_2]
+
     
-    def next_generation(self):
+    def next_generation_default(self):
         nr_of_reproductions = int(self.candidate_size/2)
         
         # Initialize candidates for next generation by copying current generation.
+        
         candidates = [] + self.individuals
         
         # Generate additional candidates through reproduction
         for i in range(nr_of_reproductions):
-            # self.select_parents TODO
             parent_1 = self.individuals[0]
             parent_2 = self.individuals[1]
             candidates = candidates + self.reproduce(parent_1, parent_2)
+        
+        # Pick gen_size best performing candidates as next generation
+        candidates = np.array(candidates)
+        fitness_per_candidate = np.array([c.fitness for c in candidates])
+        indices = (-fitness_per_candidate).argsort()[:self.gen_size]
+        self.individuals = list(candidates[indices])
+        
+        # Return fitness metrics of current generation
+        fitness_per_ind = np.array([i.fitness for i in self.individuals])
+        return fitness_per_ind.max(), fitness_per_ind.min(), fitness_per_ind.mean()
+    
+    def next_generation_tournament(self):
+        nr_of_reproductions = int(self.candidate_size/2)
+        
+        # Initialize candidates for next generation by copying current generation.
+        
+        candidates = [] + self.individuals
+        
+        # Generate additional candidates through reproduction
+        for i in range(nr_of_reproductions):
+            parent_1, parent_2 = self.tournament_select()
+            # TODO make this method more efficient, this one slows down the algorithm most of all.
+            candidates = candidates + self.reproduce(parent_1, parent_2) 
         
         # Pick gen_size best performing candidates as next generation
         candidates = np.array(candidates)
@@ -200,23 +235,14 @@ class Population:
         
         return visited
     
-    def torunament_select(self, tournament_size=2):
-        rng = default_rng()
-        tournaments = [np.array(self.individuals)[rng.choice(len(self.individuals), size=2*tournament_size, replace=False)] for i in range(int(len(self.individuals)/2))]
-        
-        # Find best in first binary tourney
-        if tournaments[0].fitness() < tournaments[1].fitness():
-            candidate_1 = tournaments[0]
-        else:
-            candidate_1 = tournaments[1]
-        # Find best in second binary tourney
-        if tournaments[2].fitness() < tournaments[3].fitness():
-            candidate_2 = tournaments[2]
-        else:
-            candidate_2 = tournaments[3]
-            
-        return candidate_1, candidate_2
-        
+    def tournament_select(self):
+        tournament_size = self.tournament_size
+        tournaments = np.random.choice(self.individuals, size=2*tournament_size, replace=False)
+        tournament_1 = tournaments[:tournament_size]
+        tournament_2 = tournaments[tournament_size:]
+        # TODO optimize such that max tournament_size checks are done in the sorting algorithm
+        candidates = [sorted(tournament_1, key=lambda c: c.fitness)[0], sorted(tournament_2, key=lambda c: c.fitness)[0]]
+        return candidates
         
     
     def run(self, nr_gens, verbose = True):
@@ -227,7 +253,12 @@ class Population:
         mean_run = []
         if verbose:
             for i in trange(nr_gens):
-                best, worst, mean = self.next_generation()
+                best, worst, mean = self.next_generation_tournament() if self.tournament_size else self.next_generation_default()
+                
+                if len(best_run) > 0:
+                    if best != max(best_run):
+                        print(f"Gen{i}: best = {best}")
+                
                 best_run.append(best)
                 worst_run.append(worst)
                 mean_run.append(mean)
