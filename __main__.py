@@ -11,11 +11,13 @@ def main(
     create_new_file=False,
     num_generations=1000,
     gen_size=100,
+    candidate_size=200,
     timing_cap=10,
     mutation_rate=0.001,
     tournament_size=5,
     fig_title="Default Run",
     replace=False,
+    mutation_mode="schedule"
 ):
     data_file = ""
     if use_simulated_data:
@@ -39,7 +41,7 @@ def main(
         sim,
         intersection_dict,
         gen_size=gen_size,
-        candidate_size=gen_size,
+        candidate_size=candidate_size,
         timing_cap=timing_cap,
         mutation_rate=mutation_rate,
         tournament_size=tournament_size,
@@ -47,7 +49,6 @@ def main(
     )
     b, w, m = pop.run(num_generations)
     utils.plot_evolutionary_run(b, w, m, fig_title=fig_title)
-    print(f"Generation {num_generations} - best: {b}, worst: {w}, mean: {m}")
 
     return 0
 
@@ -92,6 +93,13 @@ if __name__ == "__main__":
         help="How many individuals in each generation.",
     )
     parser.add_argument(
+        "--candidate_size",
+        dest="candidate_size",
+        default=200,
+        type=int,
+        help="How many individuals are generated in each generation.",
+    )
+    parser.add_argument(
         "--timing_cap",
         dest="timing_cap",
         default=10,
@@ -115,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--fig_title", dest="fig_title", default="default run", type=str
     )
+    parser.add_argument("--mutation_mode", dest="mut_mode", default="schedule", type=str, help="string controlling the mode of mutation. Needs to be either 'schedule' or 'individual'.")
 
     args = parser.parse_args()
 
@@ -123,8 +132,10 @@ if __name__ == "__main__":
         create_new_file=args.new_file,
         num_generations=args.num_gens,
         gen_size=args.gen_size,
+        candidate_size=args.candidate_size,
         timing_cap=args.timing_cap,
         mutation_rate=args.muta_rate,
         tournament_size=args.tour_size,
+        replace=args.replace,
         fig_title=args.fig_title,
     )
