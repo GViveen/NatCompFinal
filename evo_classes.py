@@ -36,7 +36,6 @@ class Individual:
         self.timing_cap = timing_cap
         self.fitness = 0
 
-
     def mutate(self, mode="schedule"):
         if mode == "schedule":
             self.mutate_schedule()
@@ -55,13 +54,22 @@ class Individual:
                 random_timing = rng.integers(1, self.timing_cap, endpoint=True)
                 schedule[random_index] = random_timing
                 self.schedules[i] = schedule
-                
+
     def mutate_ind(self):
         rng = default_rng()
         mutation_chance = rng.random()
         if mutation_chance <= self.mutation_rate:
             random_index = rng.integers(0, len(self.schedules))
-            self.schedules[random_index] = list((rng.integers(0, self.timing_cap, len(self.schedules[random_index]), endpoint=True)))
+            self.schedules[random_index] = list(
+                (
+                    rng.integers(
+                        0,
+                        self.timing_cap,
+                        len(self.schedules[random_index]),
+                        endpoint=True,
+                    )
+                )
+            )
 
     def update_fitness(self, score):
         self.fitness = score
@@ -86,7 +94,7 @@ class Population:
         mutation_rate=0.001,
         tournament_size=None,
         replace_parents=False,
-        mutation_mode="schedule"
+        mutation_mode="schedule",
     ):
         """
         Class containing a Simulation object and a set of Individual objects
@@ -153,7 +161,9 @@ class Population:
 
         for int_id, intersection in self.sim.intersections.items():
             schedules[int_id].extend(
-                rng.integers(0, self.timing_cap, len(intersection.schedule), endpoint=True)
+                rng.integers(
+                    0, self.timing_cap, len(intersection.schedule), endpoint=True
+                )
             )
 
         self.individuals.append(
@@ -252,13 +262,11 @@ class Population:
             # TODO make this method more efficient, this one slows down the algorithm most of all.
             candidates = candidates + self.reproduce(parent_1, parent_2)
 
-
         # Pick gen_size best performing candidates as next generation
         candidates = np.array(candidates)
         fitness_per_candidate = np.array([c.fitness for c in candidates])
         indices = (-fitness_per_candidate).argsort()[: self.gen_size]
         self.individuals = list(candidates[indices])
-
 
         # Return fitness metrics of current generation
         fitness_per_ind = np.array([i.fitness for i in self.individuals])

@@ -17,7 +17,7 @@ def main(
     tournament_size=5,
     fig_title="Default Run",
     replace=False,
-    mutation_mode="schedule"
+    mutation_mode="schedule",
 ):
     data_file = ""
     if use_simulated_data:
@@ -32,7 +32,7 @@ def main(
                 save=True,
                 name="complex_test.in",
                 min_neighbors=3,
-                max_neighbors=100,
+                max_neighbors=10,
             )
     else:
         data_file = "./data/hashcode.in"
@@ -123,7 +123,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--fig_title", dest="fig_title", default="default run", type=str
     )
-    parser.add_argument("--mutation_mode", dest="mut_mode", default="schedule", type=str, help="string controlling the mode of mutation. Needs to be either 'schedule' or 'individual'.")
+    parser.add_argument(
+        "--mutation_mode",
+        dest="mut_mode",
+        default="schedule",
+        type=str,
+        help="string controlling the mode of mutation. Needs to be either 'schedule' or 'individual'.",
+    )
 
     args = parser.parse_args()
 

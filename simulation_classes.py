@@ -312,7 +312,7 @@ class Grid:
             self.grid.append(intersection)
             neighbors = self.random_neighbors(id, min_neighbors, max_neighbors)
             for neighbor in neighbors:
-                length = random.randrange(10, 40)
+                length = random.randrange(10, 30)
                 street = Grid.Street(neighbor, intersection.id, length)
                 len_inverse_street = self.check_streets_inverse_direction(street)
 
